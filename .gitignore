@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+
+raw_images
+processed_hindwings
+processed_forewings
