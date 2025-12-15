@@ -12,6 +12,26 @@
 # Output:
 #   processed_forewings/
 #   processed_hindwings/
+#
+# All wing images MUST:
+#   - be in .jpg format
+#   - follow the naming convention below
+#
+# Example:
+#   02-ZHRD-P-LF1.jpg
+#
+# Structure:
+#   <ID>-<CITY><URBANITY><SITE>-<SPECIES>-<SIDE><WING><VIEW>.jpg
+#
+# CITY:      ZH (Zurich), BS (Basel), GE (Geneva)
+# URBANITY:  R (Rural), U (Urban)
+# SITE:      A–F
+# SPECIES:   L (B. lapidarius), P (B. pascuorum)
+# SIDE:      L (Left), R (Right)
+# WING:      F (Forewing), H (Hindwing)
+# VIEW:      1 (Dorsal), 2 (Ventral)
+#
+# Files not following this convention will fail.
 
 # 1.1 - Libraries ---------------------------------------------------------
 
