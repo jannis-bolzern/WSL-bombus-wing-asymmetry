@@ -6,10 +6,13 @@
 #   - No hypothesis testing here
 #
 # Output:
-#   results/05_FA/FA_per_specimen.csv
-#   results/05_FA/symmetry_object.RDS
+#   results/5_fa_analysis/fa_table.csv
+#   results/5_fa_analysis/symmetry_object.RDS
 
 # 5.1 - Libraries ---------------------------------------------------------
+
+if (!requireNamespace("geomorph", quietly = TRUE)) {
+  install.packages("geomorph")}
 
 library(geomorph)
 
@@ -114,8 +117,3 @@ write.csv(fa,
 
 saveRDS(sym,
         file.path(out_dir, "05_forewing_symmetry_object.RDS"))
-
-cat("FA extraction complete.\n")
-cat("Saved:\n")
-cat(" - results/05_forewing_fa_table.csv\n")
-cat(" - results/05_forewing_symmetry_object.RDS\n")
