@@ -15,23 +15,20 @@
 # Output:
 #   landmark_data_forewings/
 #   landmark_data_hindwings/
-#
-# Requires:
-#   install.packages("StereoMorph")
-
 
 # 2.1 - Libraries ---------------------------------------------------------
+
+if (!requireNamespace("StereoMorph", quietly = TRUE)) {
+  install.packages("StereoMorph")}
 
 library(StereoMorph)
 
 # 2.2 - Digitization Setting ----------------------------------------------
 
-# "skip"      → skip already digitized images
-# "review"    → ONLY digitize previously completed images
+# "skip"      skip already digitized images
+# "review"    review previously completed images
 
 digitization_mode <- "review"
-
-cat("\nDigitization mode set to:", toupper(digitization_mode), "\n\n")
 
 # 2.3 - Paths -------------------------------------------------------------
 
@@ -41,8 +38,8 @@ hw_folder   <- "processed_hindwings"
 fw_shapes   <- "landmark_data_forewings"
 hw_shapes   <- "landmark_data_hindwings"
 
-if (!dir.exists(fw_shapes)) dir.create(fw_shapes)
-if (!dir.exists(hw_shapes)) dir.create(hw_shapes)
+dir.create(fw_shapes, recursive = TRUE, showWarnings = FALSE)
+dir.create(hw_shapes, recursive = TRUE, showWarnings = FALSE)
 
 # 2.4 - Landmark Templates ------------------------------------------------
 
