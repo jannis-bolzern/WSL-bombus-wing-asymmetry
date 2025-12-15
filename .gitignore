@@ -6,3 +6,5 @@
 raw_images
 processed_hindwings
 processed_forewings
+06_shape_vis_qc.R
+07_models.R
