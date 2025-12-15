@@ -9,15 +9,17 @@
 #         hw_coords.RDS
 #         fw_metadata.csv
 #         hw_metadata.csv
-#
-# Requires:
-#   library(StereoMorph)
-#   library(geomorph)
-
 
 # 3.1 - Libraries ---------------------------------------------------------
 
+if (!requireNamespace("StereoMorph", quietly = TRUE)) {
+  install.packages("StereoMorph")}
+
 library(StereoMorph)
+
+if (!requireNamespace("geomorph", quietly = TRUE)) {
+  install.packages("geomorph")}
+
 library(geomorph)
 
 # 3.2 - Paths -------------------------------------------------------------
@@ -25,23 +27,25 @@ library(geomorph)
 fw_shapes <- "landmark_data_forewings"
 hw_shapes <- "landmark_data_hindwings"
 
-
 # 3.3 - Parse Metadata ----------------------------------------------------
 
 # Example filename:
-#       02-ZHRD-LF1.txt
+#   02-ZHRD-P-LF1.jpg
 #
 # Structure:
-#   02   = specimen ID
-#   ZH   = city
-#   R    = rural / U = urban
-#   D    = site
+#   <ID>-<CITY><URBANITY><SITE>-<SPECIES>-<SIDE><WING><VIEW>.jpg
 #
-#   After dash:
-#     L  = species (Lapidarius) / P = Pascuorum
-#     L/R = left/right
-#     F/H = forewing/hindwing
-#     1/2 = dorsal/ventral
+# CITY:      ZH (Zurich), BS (Basel), GE (Geneva)
+# URBANITY:  R (Rural), U (Urban)
+# SITE:      A–F
+# SPECIES:   L (B. lapidarius), P (B. pascuorum)
+# SIDE:      L (Left), R (Right)
+# WING:      F (Forewing), H (Hindwing)
+# VIEW:      1 (Dorsal), 2 (Ventral)
+#
+# - The specimen number alone is NOT a unique identifier.
+# - Uniqueness is ensured later via a constructed specimen_uid.
+# - Filenames not matching this pattern will be rejected.
 
 parse_metadata <- function(fname) {
   
@@ -102,148 +106,101 @@ parse_metadata <- function(fname) {
   )
 }
 
-
 # 3.4 - Read Shapes -------------------------------------------------------
-
 read_shapes_to_array <- function(folder) {
   
   files <- list.files(folder, pattern = "\\.txt$", full.names = TRUE)
-  if (length(files) == 0) stop("No .txt shape files found in: ", folder)
+  if (length(files) == 0)
+    stop("No .txt shape files found in: ", folder)
   
-  first_shp <- NULL
-  for (f in files) {
-    shp_i <- tryCatch(readShapes(f), error = function(e) NULL)
-    if (!is.null(shp_i)) {
-      # probably not needed?
-      if (!is.null(shp_i$landmarks.scaled)) {
-        first_shp <- shp_i$landmarks.scaled
-      } else if (!is.null(shp_i$landmarks.pixel)) {
-        first_shp <- shp_i$landmarks.pixel
-      }
-      if (!is.null(first_shp)) break
-    }
-  }
-  if (is.null(first_shp)) stop("Could not read landmarks from any file in: ", folder)
+  # Read first file to get dimensions
+  shp0 <- readShapes(files[1])
   
-  # ensure first_shp is matrix-like
-  first_mat <- as.matrix(first_shp)
+  if (is.null(shp0$landmarks.pixel))
+    stop("No pixel landmarks found in first file: ", basename(files[1]))
+  
+  first_mat <- as.matrix(shp0$landmarks.pixel)
+  
+  if (ncol(first_mat) != 2)
+    stop("Expected 2 columns (x, y) in landmarks.")
+  
   p <- nrow(first_mat)
-  k <- ncol(first_mat)
-  if (k != 2) stop("Expected 2 columns (x,y) in landmarks, found: ", k)
-  
+  k <- 2
   n <- length(files)
+  
   coords <- array(NA_real_, dim = c(p, k, n))
   
   metadata <- data.frame(
     file = basename(files),
     specimen_uid = character(n),
-    specimen_id = character(n),
-    city = character(n),
-    urbanity = character(n),
-    site = character(n),
-    location = character(n),
+    specimen_id  = character(n),
+    city         = character(n),
+    urbanity     = character(n),
+    site         = character(n),
+    location     = character(n),
     species_code = character(n),
-    species = character(n),
-    side = character(n),
-    wing = character(n),
-    series = integer(n),
-    view = character(n),
+    species      = character(n),
+    side         = character(n),
+    wing         = character(n),
+    series       = integer(n),
+    view         = character(n),
     stringsAsFactors = FALSE
   )
   
-  # iterate files and populate
+  # Loop through files
   for (i in seq_along(files)) {
     f <- files[i]
-    shp <- tryCatch(readShapes(f), error = function(e) {
-      warning("Failed reading shapes for file: ", basename(f), " — skipping. Error: ", conditionMessage(e))
-      return(NULL)
-    })
-    if (is.null(shp)) next
     
-    # pick landmarks: prefer scaled then pixel
-    lm_mat <- NULL
-    if (!is.null(shp$landmarks.scaled)) {
-      lm_mat <- shp$landmarks.scaled
-    } else if (!is.null(shp$landmarks.pixel)) {
-      lm_mat <- shp$landmarks.pixel
-    } else {
-      warning("No landmarks found in file: ", basename(f), "; leaving NA for this specimen.")
-      next
-    }
+    shp <- tryCatch(
+      readShapes(f),
+      error = function(e) stop("Failed reading: ", basename(f))
+    )
     
-    # coerce to numeric matrix with two columns
-    lm_mat <- as.matrix(lm_mat)
-    # If the matrix has more than 2 columns, try first two; else error
-    if (ncol(lm_mat) < 2) {
-      warning("Landmark matrix for ", basename(f), " has <2 columns; skipping.")
-      next
-    } else if (ncol(lm_mat) > 2) {
-      lm_mat <- lm_mat[, 1:2]
-    }
+    lm <- shp$landmarks.pixel
+    if (is.null(lm))
+      stop("No pixel landmarks in file: ", basename(f))
     
-    # If landmark count differs from 'p', pad or truncate gracefully
-    p_this <- nrow(lm_mat)
-    if (p_this < p) {
-      # create p x 2 with NA, then fill top p_this rows
-      tmp <- matrix(NA_real_, nrow = p, ncol = 2)
-      tmp[seq_len(p_this), ] <- apply(lm_mat, 2, as.numeric)
-      lm_mat_num <- tmp
-    } else if (p_this > p) {
-      # truncate to first p rows (warn)
-      warning("File ", basename(f), " has ", p_this, " landmarks (expected ", p, "). Truncating to first ", p, ".")
-      lm_mat_num <- apply(lm_mat[seq_len(p), , drop = FALSE], 2, as.numeric)
-    } else {
-      lm_mat_num <- apply(lm_mat, 2, as.numeric)
-    }
+    lm <- as.matrix(lm)
     
-    coords[, , i] <- lm_mat_num
+    if (nrow(lm) != p || ncol(lm) != 2)
+      stop("Landmark dimensions differ in file: ", basename(f))
     
-    # parse metadata using your parse_metadata() function (must exist in environment)
-    md <- tryCatch(parse_metadata(basename(f)), error = function(e) {
-      warning("parse_metadata() failed for ", basename(f), ": ", conditionMessage(e))
-      return(NULL)
-    })
-    if (!is.null(md)) {
-      metadata$specimen_uid[i] <- md$specimen_uid 
-      metadata$specimen_id[i]  <- md$specimen_id
-      metadata$city[i]         <- md$city
-      metadata$urbanity[i]     <- md$urbanity
-      metadata$site[i]         <- md$site
-      metadata$location[i]     <- md$location
-      metadata$species_code[i] <- md$species_code
-      metadata$species[i]      <- md$species
-      metadata$side[i]         <- md$side
-      metadata$wing[i]         <- md$wing
-      metadata$series[i]       <- md$series
-      metadata$view[i]         <- md$view
-    }
+    coords[, , i] <- lm
+    
+    md <- parse_metadata(basename(f))
+    
+    metadata$specimen_uid[i] <- md$specimen_uid
+    metadata$specimen_id[i]  <- md$specimen_id
+    metadata$city[i]         <- md$city
+    metadata$urbanity[i]     <- md$urbanity
+    metadata$site[i]         <- md$site
+    metadata$location[i]     <- md$location
+    metadata$species_code[i] <- md$species_code
+    metadata$species[i]      <- md$species
+    metadata$side[i]         <- md$side
+    metadata$wing[i]         <- md$wing
+    metadata$series[i]       <- md$series
+    metadata$view[i]         <- md$view
   }
   
-  return(list(coords = coords, metadata = metadata))
+  list(coords = coords, metadata = metadata)
 }
 
 # 3.5 - Process Forewings -------------------------------------------------
 
-cat("Processing FOREWING shape files...\n")
 fw <- read_shapes_to_array(fw_shapes)
 
 saveRDS(fw$coords, file = "fw_coords.RDS")
 write.csv(fw$metadata, file = "fw_metadata.csv", row.names = FALSE)
 
-cat("Forewing data saved:\n  fw_coords.RDS\n  fw_metadata.csv\n\n")
-
 # 3.6 - Process Hindwings -------------------------------------------------
 
-cat("Processing HINDWING shape files...\n")
 hw <- read_shapes_to_array(hw_shapes)
 
 saveRDS(hw$coords, file = "hw_coords.RDS")
 write.csv(hw$metadata, file = "hw_metadata.csv", row.names = FALSE)
 
-cat("Hindwing data saved:\n  hw_coords.RDS\n  hw_metadata.csv\n\n")
-
 # 3.6 - Summary -----------------------------------------------------------
 
-cat("Done!\n")
 cat("Forewings:", dim(fw$coords)[3], "specimens\n")
 cat("Hindwings:", dim(hw$coords)[3], "specimens\n")
