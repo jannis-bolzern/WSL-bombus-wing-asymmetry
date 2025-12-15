@@ -1,6 +1,5 @@
-# ============================================================
-# 01 — IMAGE PROCESSING FOR BUMBLEBEE WINGS
-# ============================================================
+# 1 - IMAGE PROCESSING ----------------------------------------------------
+#
 # This script:
 #   - Reads images with standardized filenames
 #   - Determines wing side, type, and series
@@ -16,24 +15,24 @@
 #
 # Requires:
 #   install.packages("magick")
-# ============================================================
+
+# 1.1 - Libraries ---------------------------------------------------------
 
 library(magick)
+
+# 1.2 - Processing Function -----------------------------------------------
 
 process_bumblebee_wings <- function(
     input_dir = "raw_images",
     out_fw = "processed_forewings",
     out_hw = "processed_hindwings"
 ) {
-  # ----------------------------------------------------------
+  
   # Ensure output folders exist
-  # ----------------------------------------------------------
   if (!dir.exists(out_fw)) dir.create(out_fw)
   if (!dir.exists(out_hw)) dir.create(out_hw)
   
-  # ----------------------------------------------------------
   # Load image file list
-  # ----------------------------------------------------------
   files <- list.files(
     input_dir,
     pattern = "\\.(jpg|jpeg|png|tif|tiff)$",
@@ -49,9 +48,7 @@ process_bumblebee_wings <- function(
     stringsAsFactors = FALSE
   )
   
-  # ----------------------------------------------------------
   # Process each image
-  # ----------------------------------------------------------
   for (img_path in files) {
     
     filename <- basename(img_path)
@@ -99,8 +96,7 @@ process_bumblebee_wings <- function(
   return(results)
 }
 
-# -----------------------------------------------------------
-# RUN FUNCTION
-# -----------------------------------------------------------
+# 1.3 - Run Function ------------------------------------------------------
+
 output_summary <- process_bumblebee_wings()
 print(head(output_summary))
