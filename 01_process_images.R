@@ -12,11 +12,11 @@
 # Output:
 #   processed_forewings/
 #   processed_hindwings/
-#
-# Requires:
-#   install.packages("magick")
 
 # 1.1 - Libraries ---------------------------------------------------------
+
+if (!requireNamespace("magick", quietly = TRUE)) {
+  install.packages("magick")}
 
 library(magick)
 
@@ -28,9 +28,9 @@ process_bumblebee_wings <- function(
     out_hw = "processed_hindwings"
 ) {
   
-  # Ensure output folders exist
-  if (!dir.exists(out_fw)) dir.create(out_fw)
-  if (!dir.exists(out_hw)) dir.create(out_hw)
+  # Create directories if not already existent
+  dir.create(out_fw, recursive = TRUE, showWarnings = FALSE)
+  dir.create(out_hw, recursive = TRUE, showWarnings = FALSE)
   
   # Load image file list
   files <- list.files(
@@ -53,7 +53,7 @@ process_bumblebee_wings <- function(
     
     filename <- basename(img_path)
     
-    # Example format: "02-ZHRD-I-LF1.jpg"
+    # Example format: "02-ZHRD-L-LF1.jpg"
     side      <- sub("^.*-([LR])[FH][12]\\..*$", "\\1", filename)
     wing_type <- sub("^.*-[LR]([FH])[12]\\..*$", "\\1", filename)
     series    <- sub("^.*-[LR][FH]([12])\\..*$", "\\1", filename)
@@ -63,10 +63,10 @@ process_bumblebee_wings <- function(
     img <- image_read(img_path)
     mirror <- FALSE
     
-    # Series 1 → mirror LEFT wings
+    # Series 1 - mirror LEFT wings
     if (series == 1 && side == "L") mirror <- TRUE
     
-    # Series 2 → mirror RIGHT wings (inverted view)
+    # Series 2 - mirror RIGHT wings (inverted view)
     if (series == 2 && side == "R") mirror <- TRUE
     
     # Apply mirroring if required
