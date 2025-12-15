@@ -23,6 +23,9 @@
 
 # 4.1 - Libraries ---------------------------------------------------------
 
+if (!requireNamespace("geomorph", quietly = TRUE)) {
+  install.packages("geomorph")}
+
 library(geomorph)
 
 # 4.2 - Paths -------------------------------------------------------------
