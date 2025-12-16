@@ -33,7 +33,7 @@ library(geomorph)
 coords_file <- "fw_coords.RDS"
 meta_file   <- "fw_metadata.csv"
 
-out_dir <- file.path("results", "4_landmark_selection", "forewings")
+out_dir <- file.path("results", "04_landmark_selection", "forewings")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 # 4.3 - Load Data ---------------------------------------------------------
@@ -201,14 +201,55 @@ print(res_df)
 
 write.csv(res_df, file.path(out_dir, "landmark_set_comparison.csv"), row.names = FALSE)
 
-# 4.6 - Plot FA / ME Ratio ------------------------------------------------
+# 4.6 - Plot Results ------------------------------------------------------
 
-png(file.path(out_dir, "FA_ME_ratio_by_set.png"), 900, 600)
-barplot(
-  res_df$FA_ME_ratio,
-  names.arg = paste0("-", res_df$removed_n),
-  xlab = "Number of worst landmarks removed",
-  ylab = "Mean FA / Mean ME",
-  main = "Signal-to-noise by landmark set"
-)
+png(file.path(out_dir, "landmark_selection_diagnostics.png"),
+    width = 3000, height = 2000, res = 300)
+
+par(mfrow = c(3,1),
+    mar = c(4,5,2.5,1),
+    oma = c(2,0,2,0))
+
+x <- res_df$removed_n
+
+# FA / ME ratio
+plot(x, res_df$FA_ME_ratio,
+     type = "b", pch = 16,
+     ylab = "FA / ME ratio",
+     xlab = "",
+     main = "Signal-to-noise",
+     xaxt = "n")
+
+lines(x, res_df$FA_ME_ratio, type = "b", pch = 16)
+
+axis(1, at = x)
+
+# Stability (rho)
+plot(x, res_df$rho_vs_full,
+     type = "b", pch = 16,
+     ylim = c(0,1),
+     ylab = expression(paste("Spearman ", rho, " vs full set")),
+     xlab = "",
+     main = "FA ranking stability",
+     xaxt = "n")
+
+lines(x, res_df$rho_vs_full, type = "b", pch = 16)
+
+abline(h = c(0.95, 0.9), lty = 2, col = "grey50")
+
+text(x, res_df$rho_vs_full,
+     labels = res_df$landmarks_used,
+     pos = 3, cex = 0.7)
+
+axis(1, at = x)
+
+# Mean measurement error
+plot(x, res_df$mean_ME,
+     type = "b", pch = 16,
+     ylab = "Mean landmark ME",
+     xlab = "Number of worst landmarks removed",
+     main = "Digitization error")
+
+lines(x, res_df$mean_ME, type = "b", pch = 16)
+
 dev.off()
