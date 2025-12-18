@@ -23,7 +23,7 @@
 # Structure:
 #   <ID>-<CITY><URBANITY><SITE>-<SPECIES>-<SIDE><WING><VIEW>.jpg
 #
-# CITY:      ZH (Zurich), BS (Basel), GE (Geneva)
+# CITY:      ZH (Zurich), BS (Basel), BE (Bern)
 # URBANITY:  R (Rural), U (Urban)
 # SITE:      A–F
 # SPECIES:   L (B. lapidarius), P (B. pascuorum)
@@ -40,7 +40,14 @@ if (!requireNamespace("magick", quietly = TRUE)) {
 
 library(magick)
 
-# 1.2 - Processing Function -----------------------------------------------
+# 1.2 - Filename Validation ----------------------------------------------
+
+is_valid_filename <- function(fname) {
+  pattern <- "^[0-9]{2}-(ZH|BS|BE)[RU][A-F]-(L|P)-(L|R)(F|H)[12]\\.jpg$"
+  grepl(pattern, fname)
+}
+
+# 1.3 - Processing Function -----------------------------------------------
 
 process_bumblebee_wings <- function(
     input_dir = "raw_images",
@@ -48,26 +55,46 @@ process_bumblebee_wings <- function(
     out_hw = "processed_hindwings"
 ) {
   
-  # Create directories if not already existent
   dir.create(out_fw, recursive = TRUE, showWarnings = FALSE)
   dir.create(out_hw, recursive = TRUE, showWarnings = FALSE)
-  
-  # Load image file list
+
   files <- list.files(
     input_dir,
-    pattern = "\\.(jpg|jpeg|png|tif|tiff)$",
+    pattern = "\\.jpg$",
     ignore.case = TRUE,
     full.names = TRUE
   )
   
-  cat("Found", length(files), "image files\n\n")
+  if (length(files) == 0) {
+    stop("No .jpg images found in: ", input_dir)
+  }
+  
+  cat("Found", length(files), "image files\n")
+  
+  # Validate filenames
+  filenames <- basename(files)
+  invalid <- filenames[!is_valid_filename(filenames)]
+  
+  if (length(invalid) > 0) {
+    cat("\nERROR: Invalid filename(s) detected:\n")
+    for (f in invalid) cat("  -", f, "\n")
+    
+    stop(
+      "\nProcessing stopped.\n",
+      "All image files must follow the naming convention:\n",
+      "<ID>-<CITY><URBANITY><SITE>-<SPECIES>-<SIDE><WING><VIEW>.jpg\n",
+      "Example: 02-ZHRD-P-LF1.jpg"
+    )
+  }
+  
+  cat("Filename format check passed \n\n")
   
   results <- data.frame(
     original = character(0),
     processed = character(0),
     stringsAsFactors = FALSE
   )
-  
+
   # Process each image
   for (img_path in files) {
     
@@ -83,10 +110,10 @@ process_bumblebee_wings <- function(
     img <- image_read(img_path)
     mirror <- FALSE
     
-    # Series 1 - mirror LEFT wings
+    # Series 1 (dorsal) - mirror LEFT wings
     if (series == 1 && side == "L") mirror <- TRUE
     
-    # Series 2 - mirror RIGHT wings (inverted view)
+    # Series 2 (ventral) - mirror RIGHT wings
     if (series == 2 && side == "R") mirror <- TRUE
     
     # Apply mirroring if required
@@ -116,7 +143,6 @@ process_bumblebee_wings <- function(
   return(results)
 }
 
-# 1.3 - Run Function ------------------------------------------------------
+# 1.4 - Run Function ------------------------------------------------------
 
 output_summary <- process_bumblebee_wings()
-print(head(output_summary))
