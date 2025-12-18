@@ -62,7 +62,7 @@ prepare_digitize_vectors <- function(
 ) {
   imgs <- list.files(
     image_folder,
-    pattern = "\\.(jpg|jpeg|png|tif|tiff)$",
+    pattern = "\\.jpg$",
     full.names = TRUE,
     ignore.case = TRUE
   )
@@ -145,4 +145,3 @@ if (length(hw_input$images) > 0) {
 } else {
   cat("Hindwing digitization skipped (nothing to do in this mode).\n")
 }
-

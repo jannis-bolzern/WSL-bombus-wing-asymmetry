@@ -1,0 +1,8 @@
+Wing: forewings
+Baseline removed: LM20,LM18
+Awkward tested: LM6,LM15,LM21
+rho threshold: 0.95
+
+RECOMMENDED removed: LM6,LM15,LM18,LM20
+RECOMMENDED keep: LM1,LM2,LM3,LM4,LM5,LM7,LM8,LM9,LM10,LM11,LM12,LM13,LM14,LM16,LM17,LM19,LM21
+
