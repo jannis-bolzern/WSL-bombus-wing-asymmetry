@@ -101,6 +101,7 @@ process_bumblebee_wings <- function(
     filename <- basename(img_path)
     
     # Example format: "02-ZHRD-L-LF1.jpg"
+    species   <- sub("^.*-(L|P)-[LR][FH][12]\\.jpg$", "\\1", filename)
     side      <- sub("^.*-([LR])[FH][12]\\..*$", "\\1", filename)
     wing_type <- sub("^.*-[LR]([FH])[12]\\..*$", "\\1", filename)
     series    <- sub("^.*-[LR][FH]([12])\\..*$", "\\1", filename)
@@ -123,7 +124,12 @@ process_bumblebee_wings <- function(
     }
     
     # Select output folder
-    out_dir <- if (wing_type == "F") out_fw else out_hw
+    base_out <- if (wing_type == "F") out_fw else out_hw
+    
+    # Species-specific subfolder
+    out_dir <- file.path(base_out, species)
+    dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+    
     out_path <- file.path(out_dir, filename)
     
     # Save processed image
