@@ -50,9 +50,9 @@ is_valid_filename <- function(fname) {
 # 1.3 - Processing Function -----------------------------------------------
 
 process_bumblebee_wings <- function(
-    input_dir = "raw_images",
-    out_fw = "processed_forewings",
-    out_hw = "processed_hindwings"
+    input_dir = "images/raw_images",
+    out_fw = "images/processed_forewings",
+    out_hw = "images/processed_hindwings"
 ) {
   
   dir.create(out_fw, recursive = TRUE, showWarnings = FALSE)
@@ -107,6 +107,8 @@ process_bumblebee_wings <- function(
     series    <- sub("^.*-[LR][FH]([12])\\..*$", "\\1", filename)
     series    <- as.integer(series)
     
+    species_map <- c(L = "lapidarius",P = "pascuorum")
+    
     # Load image
     img <- image_read(img_path)
     mirror <- FALSE
@@ -127,7 +129,7 @@ process_bumblebee_wings <- function(
     base_out <- if (wing_type == "F") out_fw else out_hw
     
     # Species-specific subfolder
-    out_dir <- file.path(base_out, species)
+    out_dir <- file.path(base_out, unname(species_map[species]))
     dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
     
     out_path <- file.path(out_dir, filename)

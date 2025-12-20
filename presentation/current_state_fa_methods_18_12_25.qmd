@@ -1,0 +1,202 @@
+---
+title: "Bumblebee Wing Fluctuating Asymmetry"
+subtitle: "Wing Photos → Landmarks → Replicate-aware FA"
+author: "Jannis Bolzern"
+date: "2025-12-18"
+format:
+  revealjs:
+    theme: [simple]
+    slide-number: true
+    preview-links: true
+    center: false
+    transition: fade
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+## Overall analysis workflow
+
+1.  Wing mounting + photography
+
+*From here on in R:*
+
+2.  Image processing  
+3.  Digitize landmarks (StereoMorph)  
+4.  Build geomorph inputs (coords + metadata)  
+5.  Extract replicate-aware FA (per specimen)
+
+*Not part of the production pipeline:*
+
+6.  Landmark QC + method development
+
+---
+
+## Wing mounting / photography
+
+1. Remove wings (fore + hind)
+2. Mount wings in between slides and fix with clamps
+3. Photograph each set of wings twice:
+   - dorsal (series 1)
+   - ventral (series 2)
+4. Save as `.jpg` with strict filenames
+
+---
+
+## Wing mounting / photography
+
+![](mounted_wings.jpg){width=100%, fig-alt="Mounted bumblebee wings for photography."}
+
+::: notes
+Emphasize: series 1 vs 2 are different photos, not re-clicks on the same image.
+:::
+
+---
+
+## File naming convention
+
+Example:
+
+`02-ZHRD-P-LF1.jpg`
+
+Structure:
+
+`<ID>-<CITY><URBANITY><SITE>-<SPECIES>-<SIDE><WING><VIEW>.jpg`
+
+
+::: notes
+Explain this enables metadata parsing + automatic QC.
+:::
+
+---
+
+## Script 1 – Process images
+
+What it does:
+
+- Validate filename format
+- Mirror images for standardized orientation
+- Separate forewings vs hindwings into folders
+
+---
+
+## Script 2 – Digitize landmarks
+
+What it does:
+
+- Interactive digitization with StereoMorph
+- Outputs `.txt` files per image (pixel x/y)
+- Coordinates are **not scaled**; scaling happens later (Procrustes analysis)
+
+---
+
+## Script 3 – Build arrays + metadata
+
+What it does:
+
+- Read StereoMorph `.txt` landmarks  
+→ 3d array `coords` (p × 2 × n) for geomorph
+- Parse metadata from filenames
+- Construct a robust unique ID per photo
+
+::: notes
+Mention we moved UID collision checks upstream so downstream scripts stay simple.
+:::
+
+---
+
+## Script 5 – Extract replicate-aware FA
+
+Core analysis:
+
+- Matching symmetry with replicates using `geomorph::bilat.symmetry()`
+- Factors:
+  - `ind` = specimen_uid
+  - `side` = L/R
+  - `replicate` = dorsal/ventral (series 1/2)
+
+Output:
+
+- per-specimen **unsigned FA** (`sym$unsigned.AI`)
+
+---
+
+## Statistical model (what bilat.symmetry is partitioning)
+
+In the Procrustes ANOVA, variation is separated into:
+
+- **ind**: among-individual shape differences
+- **side**: directional asymmetry (DA)
+- **ind × side**: fluctuating asymmetry (FA)
+- **replicate term**: measurement error (ME)
+
+FA is the term we care about for “stress”, but it can be small → ME matters.
+
+---
+
+## Two main error sources
+
+- Imaging error  
+- Digitization error
+
+---
+
+## Imaging error
+
+- Series **1 (dorsal)** and **2 (ventral)** are **replicate photos**
+- Used to estimate / account for imaging-related variation
+
+---
+
+## Digitization error
+
+- Some landmarks are **hard to place reliably** (ambiguous veins / intersections)
+- Literature uses ~**13–20** landmarks for bumblebee forewings
+- I digitized a **combined set of 21 forewing landmarks** (from the literature)
+
+---
+
+## Script 4 – What it's for
+
+Two questions:
+
+1. **Repeatability:** which landmarks show the largest replicate mismatch?
+2. **Robustness:** if we remove noisy landmarks, do individual FA rankings stay the same?
+
+Treating this as **QC / method development**, not “optimization”.
+
+---
+
+## Script 4 – Landmark QC
+
+**Goal:** choose a defensible landmark set for forewings
+
+1. **Rank landmarks by replicate ME**  
+   - compare series 1 vs 2 within each wing (pw Procrustes)
+2. **Fixed removal path:** remove worst *k* landmarks (k = 0…5)  
+   - track **mean_pair_RMS** (replicate mismatch)
+   - track **Spearman ρ** of FA vs full set (stability)
+3. **Sensitivity check:** optionally test “awkward” landmarks (e.g., LM6/15/21)  
+   - keep only removals that **improve RMS** and **ρ ≥ 0.95**
+
+---
+
+## Where we are now
+
+- Pipeline scripts (1–3 + 5) are ready for full data processing
+- Script 4 documents:
+  - landmark repeatability
+  - robustness of FA rankings to landmark choice
+  - a final landmark protocol to digitize going forward
+
+---
+
+## Next steps
+
+- finalize landmark list (forewings / hindwings)
+- define sampling strategy
+- digitize full dataset
+- run Script 3 + 5 for full FA table
+- downstream modeling (urban vs rural effects)
+

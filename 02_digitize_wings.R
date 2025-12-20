@@ -3,7 +3,7 @@
 # This script:
 #   - Loads processed wing images
 #   - Randomizes digitization order
-#   - Launches StereoMorph for forewings and hindwings separately
+#   - Launches StereoMorph
 #   - Has 2 modes:
 #         "skip"      = skip images already digitized (default)
 #         "review"    = ONLY show already-digitized images (QC)
@@ -25,31 +25,48 @@ library(StereoMorph)
 
 # 2.2 - Digitization Setting ----------------------------------------------
 
-# "skip"      skip already digitized images
-# "review"    review previously completed images
-
+# Digitization mode:
+# "skip" = skip already digitized images
+# "review" = review previously completed images
 digitization_mode <- "review"
+
+# Species to digitize:
+# e.g. "lapidarius" or "pascuorum"
+species <- "lapidarius"
+
+# Wing to digitize:
+# "F" = forewing
+# "H" = hindwing
+digitize_wing <- "F"
+
+# Number of landmarks to digitize:
+fw_landmarks <- 21 # forewing landmarks
+hw_landmarks <- 6 # hindwing landmarks
+
+# Replicate digitization settings
+rep_percent <- 20 # percent of already-digitized images
 
 # 2.3 - Paths -------------------------------------------------------------
 
-fw_folder   <- "processed_forewings"
-hw_folder   <- "processed_hindwings"
+if (digitize_wing == "F") {
+  image_folder  <- file.path("images", "processed_forewings", species)
+  shapes_folder <- file.path("data", "landmark_data_forewings", species)
+  lm_file       <- file.path("data", "landmarks_forewings.txt")
+  num_landmarks <- fw_landmarks
+} else if (digitize_wing == "H") {
+  image_folder  <- file.path("images", "processed_hindwings", species)
+  shapes_folder <- file.path("data", "landmark_data_hindwings", species)
+  lm_file       <- file.path("data", "landmarks_hindwings.txt")
+  num_landmarks <- hw_landmarks
+} else {
+  stop("digitize_wing must be 'F' or 'H'")
+}
 
-fw_shapes   <- "landmark_data_forewings"
-hw_shapes   <- "landmark_data_hindwings"
+dir.create(shapes_folder, recursive = TRUE, showWarnings = FALSE)
 
-dir.create(fw_shapes, recursive = TRUE, showWarnings = FALSE)
-dir.create(hw_shapes, recursive = TRUE, showWarnings = FALSE)
+# 2.4 - Landmark Template -------------------------------------------------
 
-# 2.4 - Landmark Templates ------------------------------------------------
-
-fw_num_landmarks <- 21
-fw_lm_file <- "landmarks_forewings.txt"
-writeLines(paste0("LM", 1:fw_num_landmarks), fw_lm_file)
-
-hw_num_landmarks <- 6
-hw_lm_file <- "landmarks_hindwings.txt"
-writeLines(paste0("LM", 1:hw_num_landmarks), hw_lm_file)
+writeLines(paste0("LM", 1:num_landmarks), lm_file)
 
 # 2.5 - Prepare Digitization Lists ----------------------------------------
 
@@ -67,8 +84,10 @@ prepare_digitize_vectors <- function(
     ignore.case = TRUE
   )
   
-  if (length(imgs) == 0)
-    stop("No images found in ", image_folder)
+  if (length(imgs) == 0) {
+    warning("No images found in ", image_folder)
+    return(list(images = character(0), shapes = character(0)))
+  }
   
   if (randomize)
     imgs <- sample(imgs)
@@ -79,7 +98,7 @@ prepare_digitize_vectors <- function(
   )
   
   exists <- file.exists(shapes_paths)
-
+  
   if (mode == "skip") {
     if (any(exists)) {
       cat("Skipping", sum(exists), "already-digitized images:\n")
@@ -103,45 +122,133 @@ prepare_digitize_vectors <- function(
   return(list(images = imgs, shapes = shapes_paths))
 }
 
-# 2.6 - Run Forewing Digitization -----------------------------------------
+# 4.6 - Function to prepare replicate digitization ------------------------
 
-fw_input <- prepare_digitize_vectors(
-  fw_folder, fw_shapes, mode = digitization_mode
-)
-
-if (length(fw_input$images) > 0) {
-  cat("\nLaunching StereoMorph for FOREWINGS (",
-      length(fw_input$images), " images )\n")
+prepare_replicate_digitization <- function(
+    image_folder,
+    shapes_folder,
+    percent = 20,
+    seed = 123,
+    mode = "skip"
+) {
   
-  digitizeImages(
-    image.file    = fw_input$images,
-    shapes.file   = fw_input$shapes,
-    landmarks.ref = fw_lm_file
+  set.seed(seed)
+  
+  # Series-1 images only
+  imgs1 <- list.files(
+    image_folder,
+    pattern = "1\\.jpg$",
+    full.names = TRUE,
+    ignore.case = TRUE
   )
   
-  cat("Forewing digitization complete.\n")
-  invisible(readline())
-} else {
-  cat("Forewing digitization skipped (nothing to do in this mode).\n")
+  if (length(imgs1) == 0) {
+    warning("No series-1 images found for replicate digitization.")
+    return(list(images = character(0), shapes = character(0)))
+  }
+  
+  # Series-1 shapes must exist
+  shapes1 <- file.path(
+    shapes_folder,
+    sub("1\\.jpg$", "1.txt", basename(imgs1))
+  )
+  
+  has_dig1 <- file.exists(shapes1)
+  imgs1    <- imgs1[has_dig1]
+  
+  if (length(imgs1) == 0) {
+    warning("No existing series-1 digitizations found.")
+    return(list(images = character(0), shapes = character(0)))
+  }
+  
+  # Corresponding series-2 shapes
+  shapes2 <- file.path(
+    shapes_folder,
+    sub("1\\.jpg$", "2.txt", basename(imgs1))
+  )
+  
+  exists2 <- file.exists(shapes2)
+  
+  if (mode == "review") {
+    cat("REVIEW mode: showing ONLY existing replicate digitizations\n")
+    imgs_sel  <- imgs1[exists2]
+    shapes2   <- shapes2[exists2]
+  } else {
+    # skip mode = create missing replicates
+    n_total <- length(imgs1)
+    n_rep   <- max(1, ceiling(n_total * percent / 100))
+    
+    sel <- sample(seq_len(n_total), n_rep)
+    
+    imgs_sel <- imgs1[sel]
+    shapes2  <- shapes2[sel]
+    
+    # Skip existing series-2
+    exists2 <- file.exists(shapes2)
+    if (any(exists2)) {
+      cat("Skipping", sum(exists2), "already-digitized series-2 files\n")
+    }
+    
+    imgs_sel <- imgs_sel[!exists2]
+    shapes2  <- shapes2[!exists2]
+  }
+  
+  if (length(imgs_sel) == 0) {
+    warning("No replicate digitizations selected for this mode.")
+    return(list(images = character(0), shapes = character(0)))
+  }
+  
+  list(images = imgs_sel, shapes = shapes2)
 }
 
-# 2.7 - Run Hindwing Digitization -----------------------------------------
 
-hw_input <- prepare_digitize_vectors(
-  hw_folder, hw_shapes, mode = digitization_mode
+# 2.6 - Run StereoMorph Digitization --------------------------------------
+
+digitize_input <- prepare_digitize_vectors(
+  image_folder, shapes_folder, mode = digitization_mode
 )
 
-if (length(hw_input$images) > 0) {
-  cat("\nLaunching StereoMorph for HINDWINGS (",
-      length(hw_input$images), " images )\n")
+if (length(digitize_input$images) > 0) {
+  wing_label <- ifelse(digitize_wing == "F", "FOREWINGS", "HINDWINGS")
+  
+  cat("\nLaunching StereoMorph for", wing_label, "(",
+      length(digitize_input$images), " images )\n")
   
   digitizeImages(
-    image.file    = hw_input$images,
-    shapes.file   = hw_input$shapes,
-    landmarks.ref = hw_lm_file
+    image.file    = digitize_input$images,
+    shapes.file   = digitize_input$shapes,
+    landmarks.ref = lm_file
   )
   
-  cat("Hindwing digitization complete.\n")
+  cat(wing_label, "digitization complete.\n")
+  invisible(readline())
 } else {
-  cat("Hindwing digitization skipped (nothing to do in this mode).\n")
+  cat(wing_label, "digitization skipped (nothing to do in this mode).\n")
+}
+
+# 2.7 - Replicate Digitization --------------------------------------------
+  
+cat("\nPreparing replicate digitization (", rep_percent, "% of already-digitized wings )\n")
+  
+rep_input <- prepare_replicate_digitization(
+  image_folder, shapes_folder, percent = rep_percent, mode = digitization_mode
+)
+
+if (length(rep_input$images) > 0) {
+  wing_label <- ifelse(digitize_wing == "F", "FOREWINGS", "HINDWINGS")
+    
+  cat("Launching StereoMorph for replicate digitization of", wing_label, "(",
+      length(rep_input$images), " images )\n")
+  
+  digitizeImages(
+    image.file    = rep_input$images,
+    shapes.file   = rep_input$shapes,
+    landmarks.ref = lm_file
+    )
+    
+  cat("Replicate digitization complete.\n")
+  invisible(readline())
+  
+  } else {
+    cat("No replicate digitizations to perform.\n")
 }
