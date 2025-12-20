@@ -10,7 +10,6 @@
 #     - fa_comparison_table_<SPECIES>.csv
 #     - fa_correlation_<SPECIES>.txt
 #     - fa_scatterplot_<SPECIES>.png
-# ------------------------------------------------------------------------
 
 # 6.1 - Libraries ---------------------------------------------------------
 
@@ -21,7 +20,7 @@ library(geomorph)
 
 # 6.2 - Settings ----------------------------------------------------------
 
-species <- "lapidarius"   # <- CHANGE HERE if needed
+species <- "lapidarius" # Set to either "lapidarius" or "pascuorum"
 
 data_dir <- "data"
 coords_file <- file.path(data_dir, paste0("fw_coords_", species, ".RDS"))

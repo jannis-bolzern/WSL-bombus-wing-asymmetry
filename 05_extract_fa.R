@@ -165,6 +165,5 @@ for (sp in species) {
   )
   
   cat("  FA extraction complete for", sp, "\n")
+  cat("\nOutputs written to:\n  ", out_dir, "\n", sep = "")
 }
-
-cat("\nOutputs written to:\n  ", out_dir, "\n", sep = "")

@@ -185,49 +185,47 @@ hw_species_dirs <- list.dirs(hw_base, recursive = FALSE, full.names = TRUE)
 species_dirs <- sort(unique(c(fw_species_dirs, hw_species_dirs)))
 species <- sort(unique(basename(species_dirs)))
 
+processed <- character(0)
+
 for (sp in species) {
   
   cat("\nProcessing species:", sp, "\n")
   
+  wrote <- FALSE
+  
+  # Forewings
   fw <- read_shapes_to_array(file.path(fw_base, sp))
   if (!is.null(fw)) {
-    saveRDS(
-      fw$coords,
-      file = file.path(out_base, paste0("fw_coords_", sp, ".RDS"))
-    )
-    write.csv(
-      fw$metadata,
-      file = file.path(out_base, paste0("fw_metadata_", sp, ".csv")),
-      row.names = FALSE
-    )
+    wrote <- TRUE
+    
+    fw_coords <- file.path(out_base, paste0("fw_coords_", sp, ".RDS"))
+    fw_meta   <- file.path(out_base, paste0("fw_metadata_", sp, ".csv"))
+    
+    saveRDS(fw$coords, file = fw_coords)
+    write.csv(fw$metadata, file = fw_meta, row.names = FALSE)
+    
     cat("  Forewings:", dim(fw$coords)[3], "images\n")
+    cat("  Saved:\n")
+    cat("   -", fw_coords, "\n")
+    cat("   -", fw_meta, "\n")
   }
   
+  # Hindwings
   hw <- read_shapes_to_array(file.path(hw_base, sp))
   if (!is.null(hw)) {
-    saveRDS(
-      hw$coords,
-      file = file.path(out_base, paste0("hw_coords_", sp, ".RDS"))
-    )
-    write.csv(
-      hw$metadata,
-      file = file.path(out_base, paste0("hw_metadata_", sp, ".csv")),
-      row.names = FALSE
-    )
+    wrote <- TRUE
+    
+    hw_coords <- file.path(out_base, paste0("hw_coords_", sp, ".RDS"))
+    hw_meta   <- file.path(out_base, paste0("hw_metadata_", sp, ".csv"))
+    
+    saveRDS(hw$coords, file = hw_coords)
+    write.csv(hw$metadata, file = hw_meta, row.names = FALSE)
+    
     cat("  Hindwings:", dim(hw$coords)[3], "images\n")
+    cat("  Saved:\n")
+    cat("   -", hw_coords, "\n")
+    cat("   -", hw_meta, "\n")
   }
-  cat("Geomorph array construction complete.\n\n")
   
-  cat("Outputs written to working directory:\n")
-  cat("  - Forewing coordinates:  fw_coords_<SPECIES>.RDS\n")
-  cat("  - Forewing metadata:     fw_metadata_<SPECIES>.csv\n")
-  cat("  - Hindwing coordinates:  hw_coords_<SPECIES>.RDS\n")
-  cat("  - Hindwing metadata:     hw_metadata_<SPECIES>.csv\n\n")
-  
-  cat("Species processed:\n")
-  for (sp in species) {
-    if (file.exists(paste0("fw_coords_", sp, ".RDS"))) {
-      cat("  -", sp, "\n")
-    }
-  }
+  if (wrote) processed <- c(processed, sp)
 }

@@ -7,7 +7,6 @@
 #   results/07_digitization_error/
 #     - digitization_error_per_wing_<SPECIES>.csv
 #     - digitization_error_summary_<SPECIES>.csv
-# ------------------------------------------------------------------------
 
 # 7.1 Libraries -----------------------------------------------------------
 
@@ -18,7 +17,7 @@ library(geomorph)
 
 # 7.2 Settings ------------------------------------------------------------
 
-species <- "lapidarius"   # <- change if needed
+species <- "lapidarius" # Set to either "lapidarius" or "pascuorum"
 
 data_dir <- "data"
 coords_file <- file.path(data_dir, paste0("fw_coords_", species, ".RDS"))
@@ -43,7 +42,7 @@ if (nrow(meta_all) != dim(coords_all)[3]) {
 meta_all$side   <- ifelse(meta_all$side %in% c("L","Left"), "Left", "Right")
 meta_all$series <- as.integer(meta_all$series)
 
-# wing identity = same physical wing
+# Wing identity = same physical wing
 meta_all$wing_id <- paste(meta_all$specimen_uid, meta_all$side, sep = "__")
 
 # 7.4 Keep only replicated wings -----------------------------------------
@@ -60,7 +59,7 @@ sel <- meta_all$wing_id %in% wing_ids_rep & meta_all$series %in% c(1, 2)
 meta   <- meta_all[sel, , drop = FALSE]
 coords <- coords_all[,,sel, drop = FALSE]
 
-# sanity check
+# Sanity check
 counts <- table(meta$wing_id, meta$series)
 bad <- rownames(counts)[!(counts[, "1"] == 1 & counts[, "2"] == 1)]
 

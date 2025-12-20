@@ -16,7 +16,6 @@
 #     - model_coefficients_<species>.csv
 #     - fa_by_urbanity_<species>.png
 #     - diagnostics_<species>.png
-# ------------------------------------------------------------------------
 
 # 8.1 - Libraries ---------------------------------------------------------
 

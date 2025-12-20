@@ -154,3 +154,4 @@ process_bumblebee_wings <- function(
 # 1.4 - Run Function ------------------------------------------------------
 
 output_summary <- process_bumblebee_wings()
+print(head(output_summary))
