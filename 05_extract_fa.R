@@ -24,7 +24,7 @@ data_dir <- "data"
 coords_prefix <- "fw_coords_"
 meta_prefix   <- "fw_metadata_"
 
-out_dir <- file.path("results", "05_fa_analysis")
+out_dir <- file.path("results", "05_extract_fa")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 # 5.3 - Detect species automatically -------------------------------------
