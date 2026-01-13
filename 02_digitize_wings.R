@@ -2,6 +2,7 @@
 #
 # This script:
 #   - Loads processed wing images
+#   - Creates temporary copies in the image folder for digitization replicates
 #   - Randomizes digitization order
 #   - Launches StereoMorph
 #   - Has 2 modes:
@@ -19,8 +20,8 @@
 # 2.1 - Libraries ---------------------------------------------------------
 
 if (!requireNamespace("StereoMorph", quietly = TRUE)) {
-  install.packages("StereoMorph")}
-
+  install.packages("StereoMorph")
+}
 library(StereoMorph)
 
 # 2.2 - Digitization Setting ----------------------------------------------
@@ -40,11 +41,8 @@ species <- "lapidarius"
 digitize_wing <- "F"
 
 # Number of landmarks to digitize:
-fw_landmarks <- 21 # forewing landmarks
-hw_landmarks <- 6 # hindwing landmarks
-
-# Replicate digitization settings
-rep_percent <- 20 # percent of already-digitized images
+fw_landmarks <- 15 # forewing landmarks
+hw_landmarks <- 6  # hindwing landmarks
 
 # 2.3 - Paths -------------------------------------------------------------
 
@@ -68,187 +66,202 @@ dir.create(shapes_folder, recursive = TRUE, showWarnings = FALSE)
 
 writeLines(paste0("LM", 1:num_landmarks), lm_file)
 
-# 2.5 - Prepare Digitization Lists ----------------------------------------
+# 2.5 – Helper Functions --------------------------------------------------
 
-prepare_digitize_vectors <- function(
-    image_folder, 
-    shapes_folder, 
-    ext_out = ".txt",
-    randomize = TRUE,
-    mode = "skip"
-) {
-  imgs <- list.files(
-    image_folder,
-    pattern = "\\.jpg$",
-    full.names = TRUE,
-    ignore.case = TRUE
-  )
-  
-  if (length(imgs) == 0) {
-    warning("No images found in ", image_folder)
-    return(list(images = character(0), shapes = character(0)))
+# Function to clean up temporary files
+cleanup_temp_files <- function(temp_files) {
+  if (length(temp_files) > 0) {
+    unlink(temp_files, recursive = TRUE)
+    cat("Cleaned up", length(temp_files), "temporary files\n")
   }
-  
-  if (randomize)
-    imgs <- sample(imgs)
-  
-  shapes_paths <- file.path(
-    shapes_folder,
-    paste0(tools::file_path_sans_ext(basename(imgs)), ext_out)
-  )
-  
-  exists <- file.exists(shapes_paths)
-  
-  if (mode == "skip") {
-    if (any(exists)) {
-      cat("Skipping", sum(exists), "already-digitized images:\n")
-      print(basename(imgs[exists]))
-    }
-    imgs <- imgs[!exists]
-    shapes_paths <- shapes_paths[!exists]
-  }
-  
-  if (mode == "review") {
-    cat("REVIEW mode: showing ONLY already-digitized images\n")
-    imgs <- imgs[exists]
-    shapes_paths <- shapes_paths[exists]
-  }
-  
-  if (length(imgs) == 0) {
-    warning("No images selected for this mode.")
-    return(list(images = character(0), shapes = character(0)))
-  }
-  
-  return(list(images = imgs, shapes = shapes_paths))
 }
 
-# 4.6 - Function to prepare replicate digitization ------------------------
-
-prepare_replicate_digitization <- function(
-    image_folder,
-    shapes_folder,
-    percent = 20,
-    seed = 123,
-    mode = "skip"
-) {
+# Prepare digitization list for single session
+prepare_single_session_jobs <- function(image_folder, shapes_folder, mode = "skip") {
   
-  set.seed(seed)
+  # Initialize vectors
+  imgs_to_digitize <- character(0)
+  shapes_to_save <- character(0)
+  temp_files <- character(0)  # To track temporary files for cleanup
   
-  # Series-1 images only
-  imgs1 <- list.files(
-    image_folder,
-    pattern = "1\\.jpg$",
-    full.names = TRUE,
-    ignore.case = TRUE
-  )
+  # Get all series 2 images first to know which have imaging replicates
+  series2_imgs <- list.files(image_folder, pattern = "2\\.jpg$", full.names = TRUE)
   
-  if (length(imgs1) == 0) {
-    warning("No series-1 images found for replicate digitization.")
-    return(list(images = character(0), shapes = character(0)))
+  # Create a lookup of which specimens have imaging replicates
+  has_imaging_replicate <- character()
+  for (img2 in series2_imgs) {
+    img1 <- sub("2\\.jpg$", "1.jpg", img2)
+    if (file.exists(img1)) {
+      has_imaging_replicate <- c(has_imaging_replicate, img1)
+    }
   }
   
-  # Series-1 shapes must exist
-  shapes1 <- file.path(
-    shapes_folder,
-    sub("1\\.jpg$", "1.txt", basename(imgs1))
-  )
+  # Create a temporary subdirectory in the image folder for replicates
+  temp_dir <- file.path(image_folder, "temp_replicates")
+  dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
   
-  has_dig1 <- file.exists(shapes1)
-  imgs1    <- imgs1[has_dig1]
+  # Get all series 1 images (original photos)
+  series1_imgs <- list.files(image_folder, pattern = "1\\.jpg$", full.names = TRUE)
   
-  if (length(imgs1) == 0) {
-    warning("No existing series-1 digitizations found.")
-    return(list(images = character(0), shapes = character(0)))
-  }
-  
-  # Corresponding series-2 shapes
-  shapes2 <- file.path(
-    shapes_folder,
-    sub("1\\.jpg$", "2.txt", basename(imgs1))
-  )
-  
-  exists2 <- file.exists(shapes2)
-  
-  if (mode == "review") {
-    cat("REVIEW mode: showing ONLY existing replicate digitizations\n")
-    imgs_sel  <- imgs1[exists2]
-    shapes2   <- shapes2[exists2]
-  } else {
-    # skip mode = create missing replicates
-    n_total <- length(imgs1)
-    n_rep   <- max(1, ceiling(n_total * percent / 100))
+  # Process each series 1 image
+  for (img1 in series1_imgs) {
+    basename_no_ext <- tools::file_path_sans_ext(basename(img1))
     
-    sel <- sample(seq_len(n_total), n_rep)
+    # Regular digitization (image_1.jpg -> image_1.txt)
+    shape_regular <- file.path(shapes_folder, paste0(basename_no_ext, ".txt"))
     
-    imgs_sel <- imgs1[sel]
-    shapes2  <- shapes2[sel]
-    
-    # Skip existing series-2
-    exists2 <- file.exists(shapes2)
-    if (any(exists2)) {
-      cat("Skipping", sum(exists2), "already-digitized series-2 files\n")
+    # Check if we should include regular digitization
+    if (mode == "skip") {
+      include_regular <- !file.exists(shape_regular)
+    } else { # mode == "review"
+      include_regular <- file.exists(shape_regular)
     }
     
-    imgs_sel <- imgs_sel[!exists2]
-    shapes2  <- shapes2[!exists2]
+    # Add regular digitization if needed
+    if (include_regular) {
+      imgs_to_digitize <- c(imgs_to_digitize, img1)
+      shapes_to_save <- c(shapes_to_save, shape_regular)
+    }
+    
+    # Only create digitization replicate IF there's a corresponding series 2 image
+    if (img1 %in% has_imaging_replicate) {
+      shape_rep <- file.path(shapes_folder, paste0(basename_no_ext, "_rep.txt"))
+      
+      # Check if we should include digitization replicate
+      if (mode == "skip") {
+        include_rep <- !file.exists(shape_rep)
+      } else { # mode == "review"
+        include_rep <- file.exists(shape_rep)
+      }
+      
+      # Add digitization replicate if needed
+      if (include_rep) {
+        # Create temporary copy in the temp directory (same folder as images)
+        temp_img <- file.path(temp_dir, paste0(basename_no_ext, "_rep_temp.jpg"))
+        
+        # Copy the original image to temporary location
+        file.copy(img1, temp_img, overwrite = TRUE)
+        
+        # Add to job list
+        imgs_to_digitize <- c(imgs_to_digitize, temp_img)
+        shapes_to_save <- c(shapes_to_save, shape_rep)
+        
+        # Track for cleanup
+        temp_files <- c(temp_files, temp_img)
+      }
+    }
   }
   
-  if (length(imgs_sel) == 0) {
-    warning("No replicate digitizations selected for this mode.")
-    return(list(images = character(0), shapes = character(0)))
+  # Process each series 2 image (imaging replicates)
+  for (img2 in series2_imgs) {
+    # Check if corresponding series 1 exists (only process if part of a pair)
+    img1 <- sub("2\\.jpg$", "1.jpg", img2)
+    if (!file.exists(img1)) next
+    
+    basename_no_ext <- tools::file_path_sans_ext(basename(img2))
+    shape_regular <- file.path(shapes_folder, paste0(basename_no_ext, ".txt"))
+    
+    if (mode == "skip") {
+      include <- !file.exists(shape_regular)
+    } else {
+      include <- file.exists(shape_regular)
+    }
+    
+    if (include) {
+      imgs_to_digitize <- c(imgs_to_digitize, img2)
+      shapes_to_save <- c(shapes_to_save, shape_regular)
+    }
   }
   
-  list(images = imgs_sel, shapes = shapes2)
+  # Return list with jobs and temp files for cleanup
+  return(list(
+    jobs = data.frame(
+      image = imgs_to_digitize,
+      shape = shapes_to_save,
+      stringsAsFactors = FALSE
+    ),
+    temp_files = temp_files,
+    temp_dir = temp_dir
+  ))
 }
 
+# 2.6 - Run Digitization ---------------------------------------
 
-# 2.6 - Run StereoMorph Digitization --------------------------------------
+cat("Digitization mode:", toupper(digitization_mode), "\n")
+wing_label <- ifelse(digitize_wing == "F", "Forewings", "Hindwings")
+cat("Species:", species, "\n")
+cat("Wing type:", wing_label, "\n")
 
-digitize_input <- prepare_digitize_vectors(
-  image_folder, shapes_folder, mode = digitization_mode
+# Prepare all jobs for single session
+prep_result <- prepare_single_session_jobs(
+  image_folder = image_folder,
+  shapes_folder = shapes_folder,
+  mode = digitization_mode
 )
 
-if (length(digitize_input$images) > 0) {
-  wing_label <- ifelse(digitize_wing == "F", "FOREWINGS", "HINDWINGS")
-  
-  cat("\nLaunching StereoMorph for", wing_label, "(",
-      length(digitize_input$images), " images )\n")
-  
-  digitizeImages(
-    image.file    = digitize_input$images,
-    shapes.file   = digitize_input$shapes,
-    landmarks.ref = lm_file
-  )
-  
-  cat(wing_label, "digitization complete.\n")
-  invisible(readline())
+jobs <- prep_result$jobs
+temp_files <- prep_result$temp_files
+temp_dir <- prep_result$temp_dir
+
+# Check if any jobs to process
+if (nrow(jobs) == 0) {
+  cat("No images to digitize in", digitization_mode, "mode.\n")
+  if (digitization_mode == "skip") {
+    cat("  - All images have already been digitized\n")
+    cat("  - Use mode='review' to re-examine digitized images\n")
+  } else {
+    cat("  - No digitized images found to review\n")
+    cat("  - Use mode='skip' to digitize new images\n")
+  }
 } else {
-  cat(wing_label, "digitization skipped (nothing to do in this mode).\n")
-}
-
-# 2.7 - Replicate Digitization --------------------------------------------
+  # Randomize order
+  jobs <- jobs[sample(nrow(jobs)), , drop = FALSE]
   
-cat("\nPreparing replicate digitization (", rep_percent, "% of already-digitized wings )\n")
+  regular_jobs <- 0
+  rep_jobs <- 0
+  imaging_rep_jobs <- 0
   
-rep_input <- prepare_replicate_digitization(
-  image_folder, shapes_folder, percent = rep_percent, mode = digitization_mode
-)
-
-if (length(rep_input$images) > 0) {
-  wing_label <- ifelse(digitize_wing == "F", "FOREWINGS", "HINDWINGS")
-    
-  cat("Launching StereoMorph for replicate digitization of", wing_label, "(",
-      length(rep_input$images), " images )\n")
+  for (i in 1:nrow(jobs)) {
+    shape_file <- jobs$shape[i]
+    if (grepl("_rep\\.txt$", shape_file)) {
+      rep_jobs <- rep_jobs + 1
+    } else if (grepl("2\\.txt$", shape_file)) {
+      imaging_rep_jobs <- imaging_rep_jobs + 1
+    } else if (grepl("1\\.txt$", shape_file)) {
+      regular_jobs <- regular_jobs + 1
+    }
+  }
   
+  cat("Launching StereoMorph for", wing_label, "of Bombus", species, "\n")
+  cat("Total images to digitize:", nrow(jobs), "\n")
+  if (regular_jobs > 0) cat("  - Regular digitizations:", regular_jobs, "\n")
+  if (rep_jobs > 0) cat("  - Digitization replicates:", rep_jobs, "\n")
+  if (imaging_rep_jobs > 0) cat("  - Imaging replicates:", imaging_rep_jobs, "\n")
+  cat("\n")
+  
+  # Launch StereoMorph
   digitizeImages(
-    image.file    = rep_input$images,
-    shapes.file   = rep_input$shapes,
+    image.file    = jobs$image,
+    shapes.file   = jobs$shape,
     landmarks.ref = lm_file
-    )
-    
-  cat("Replicate digitization complete.\n")
-  invisible(readline())
+  )
   
-  } else {
-    cat("No replicate digitizations to perform.\n")
+  cat("Digitization complete!\n")
+  
+  # Clean up temporary files and directory
+  if (length(temp_files) > 0) {
+    cleanup_temp_files(temp_files)
+  }
+  
+  # Remove temp directory if empty
+  if (dir.exists(temp_dir)) {
+    # Check if directory is empty
+    if (length(list.files(temp_dir)) == 0) {
+      unlink(temp_dir, recursive = TRUE)
+    }
+  }
+  
+  # Summary
+  cat("\nSummary:\n")
+  cat("- Output folder:", shapes_folder, "\n")
 }

@@ -113,12 +113,8 @@ process_bumblebee_wings <- function(
     img <- image_read(img_path)
     mirror <- FALSE
     
-    # Series 1 (dorsal) - mirror LEFT wings
-    if (series == 1 && side == "L") mirror <- TRUE
-    
-    # Series 2 (ventral) - mirror RIGHT wings
-    if (series == 2 && side == "R") mirror <- TRUE
-    
+    if (side == "L") mirror <- TRUE
+      
     # Apply mirroring if required
     if (mirror) {
       cat("Mirroring:", filename, "\n")
