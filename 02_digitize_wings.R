@@ -20,8 +20,8 @@
 # 2.1 - Libraries ---------------------------------------------------------
 
 if (!requireNamespace("StereoMorph", quietly = TRUE)) {
-  install.packages("StereoMorph")
-}
+  install.packages("StereoMorph")}
+
 library(StereoMorph)
 
 # 2.2 - Digitization Setting ----------------------------------------------

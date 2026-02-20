@@ -62,7 +62,8 @@ process_bumblebee_wings <- function(
     input_dir,
     pattern = "\\.jpg$",
     ignore.case = TRUE,
-    full.names = TRUE
+    full.names = TRUE,
+    recursive = TRUE
   )
   
   if (length(files) == 0) {
@@ -94,6 +95,8 @@ process_bumblebee_wings <- function(
     processed = character(0),
     stringsAsFactors = FALSE
   )
+  
+  species_map <- c(L = "lapidarius", P = "pascuorum")
 
   # Process each image
   for (img_path in files) {
@@ -106,8 +109,6 @@ process_bumblebee_wings <- function(
     wing_type <- sub("^.*-[LR]([FH])[12]\\..*$", "\\1", filename)
     series    <- sub("^.*-[LR][FH]([12])\\..*$", "\\1", filename)
     series    <- as.integer(series)
-    
-    species_map <- c(L = "lapidarius",P = "pascuorum")
     
     # Load image
     img <- image_read(img_path)
