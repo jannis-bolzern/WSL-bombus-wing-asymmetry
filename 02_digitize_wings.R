@@ -29,11 +29,11 @@ library(StereoMorph)
 # Digitization mode:
 # "skip" = skip already digitized images
 # "review" = review previously completed images
-digitization_mode <- "review"
+digitization_mode <- "skip"
 
 # Species to digitize:
-# e.g. "lapidarius" or "pascuorum"
-species <- "lapidarius"
+# e.g. "lapidarius", "pascuorum" or both as c("lapidarius", "pascuorum")
+species <- c("lapidarius", "pascuorum")
 
 # Wing to digitize:
 # "F" = forewing
@@ -47,20 +47,20 @@ hw_landmarks <- 6  # hindwing landmarks
 # 2.3 - Paths -------------------------------------------------------------
 
 if (digitize_wing == "F") {
-  image_folder  <- file.path("images", "processed_forewings", species)
-  shapes_folder <- file.path("data", "landmark_data_forewings", species)
+  image_folders  <- file.path("images", "processed_forewings", species)
+  shapes_folders <- file.path("data", "landmark_data_forewings", species)
   lm_file       <- file.path("data", "landmarks_forewings.txt")
   num_landmarks <- fw_landmarks
 } else if (digitize_wing == "H") {
-  image_folder  <- file.path("images", "processed_hindwings", species)
-  shapes_folder <- file.path("data", "landmark_data_hindwings", species)
+  image_folders  <- file.path("images", "processed_hindwings", species)
+  shapes_folders <- file.path("data", "landmark_data_hindwings", species)
   lm_file       <- file.path("data", "landmarks_hindwings.txt")
   num_landmarks <- hw_landmarks
 } else {
   stop("digitize_wing must be 'F' or 'H'")
 }
 
-dir.create(shapes_folder, recursive = TRUE, showWarnings = FALSE)
+for (sf in shapes_folders) dir.create(sf, recursive = TRUE, showWarnings = FALSE)
 
 # 2.4 - Landmark Template -------------------------------------------------
 
@@ -189,19 +189,29 @@ prepare_single_session_jobs <- function(image_folder, shapes_folder, mode = "ski
 
 cat("Digitization mode:", toupper(digitization_mode), "\n")
 wing_label <- ifelse(digitize_wing == "F", "Forewings", "Hindwings")
-cat("Species:", species, "\n")
+cat("Species:", paste(species, collapse = " + "), "\n")
 cat("Wing type:", wing_label, "\n")
 
-# Prepare all jobs for single session
-prep_result <- prepare_single_session_jobs(
-  image_folder = image_folder,
-  shapes_folder = shapes_folder,
-  mode = digitization_mode
-)
+# collect jobs from all species folders
+all_jobs <- data.frame(image = character(0), shape = character(0), stringsAsFactors = FALSE)
+all_temp_files <- character(0)
+all_temp_dirs  <- character(0)
 
-jobs <- prep_result$jobs
-temp_files <- prep_result$temp_files
-temp_dir <- prep_result$temp_dir
+for (i in seq_along(species)) {
+  prep_result <- prepare_single_session_jobs(
+    image_folder  = image_folders[i],
+    shapes_folder = shapes_folders[i],
+    mode = digitization_mode
+  )
+  
+  all_jobs <- rbind(all_jobs, prep_result$jobs)
+  all_temp_files <- c(all_temp_files, prep_result$temp_files)
+  all_temp_dirs  <- c(all_temp_dirs, prep_result$temp_dir)
+}
+
+jobs <- all_jobs
+temp_files <- all_temp_files
+temp_dirs  <- unique(all_temp_dirs)
 
 # Check if any jobs to process
 if (nrow(jobs) == 0) {
@@ -232,7 +242,7 @@ if (nrow(jobs) == 0) {
     }
   }
   
-  cat("Launching StereoMorph for", wing_label, "of Bombus", species, "\n")
+  cat("Launching StereoMorph for", wing_label, "of Bombus", paste(species, collapse = " + "), "\n")
   cat("Total images to digitize:", nrow(jobs), "\n")
   if (regular_jobs > 0) cat("  - Regular digitizations:", regular_jobs, "\n")
   if (rep_jobs > 0) cat("  - Digitization replicates:", rep_jobs, "\n")
@@ -248,16 +258,12 @@ if (nrow(jobs) == 0) {
   
   cat("Digitization complete!\n")
   
-  # Clean up temporary files and directory
-  if (length(temp_files) > 0) {
-    cleanup_temp_files(temp_files)
-  }
+  # Clean up temporary files and directories
+  if (length(temp_files) > 0) cleanup_temp_files(temp_files)
   
-  # Remove temp directory if empty
-  if (dir.exists(temp_dir)) {
-    # Check if directory is empty
-    if (length(list.files(temp_dir)) == 0) {
-      unlink(temp_dir, recursive = TRUE)
+  for (td in temp_dirs) {
+    if (dir.exists(td) && length(list.files(td)) == 0) {
+      unlink(td, recursive = TRUE)
     }
   }
   
