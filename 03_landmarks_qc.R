@@ -18,7 +18,7 @@ library(geomorph)
 # 3.2 - Landmark expectations ---------------------------------------------
 
 landmark_spec <- list(
-  forewings = 21,
+  forewings = 15,
   hindwings = 6
 )
 

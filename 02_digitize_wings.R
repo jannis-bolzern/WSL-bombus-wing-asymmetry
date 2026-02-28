@@ -269,5 +269,5 @@ if (nrow(jobs) == 0) {
   
   # Summary
   cat("\nSummary:\n")
-  cat("- Output folder:", shapes_folder, "\n")
+  cat("- Output folder:", shapes_folders, "\n")
 }

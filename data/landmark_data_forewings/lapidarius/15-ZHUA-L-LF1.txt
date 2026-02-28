@@ -1,0 +1,21 @@
+<shapes type=list>
+	<scaling type=logical names=FALSE length=1 as.numeric=FALSE >NA</scaling>
+	<landmarks.pixel type=matrix rownames=TRUE colnames=FALSE nrow=15 ncol=2 as.numeric=TRUE >
+		LM1	3154	624
+		LM2	2290	625
+		LM3	2373	723
+		LM4	2550	759
+		LM5	2718	739
+		LM6	2818	983
+		LM7	2767	1006
+		LM8	2487	910
+		LM9	2282	920
+		LM10	2176	786
+		LM11	1997	728
+		LM12	1456	961
+		LM13	2037	1036
+		LM14	2051	1200
+		LM15	2547	1192
+	</landmarks.pixel>
+</shapes>
+
