@@ -30,10 +30,14 @@ out_base <- "data"
 parse_metadata <- function(fname) {
   
   base <- tools::file_path_sans_ext(basename(fname))
+  
+  digit_rep <- ifelse(grepl("_rep$", base), 2L, 1L)
+  base0 <- sub("_rep$", "", base)
+  
   pattern <- "^([0-9]{2})-([A-Z]{2})([RU])([A-F])-([LP])-([LR])([FH])([12])$"
   
-  x <- regexec(pattern, base)
-  m <- regmatches(base, x)[[1]]
+  x <- regexec(pattern, base0)
+  m <- regmatches(base0, x)[[1]]
   
   if (length(m) == 0) {
     stop("Filename does not match expected structure: ", fname)
@@ -46,7 +50,7 @@ parse_metadata <- function(fname) {
   species_code  <- m[6]
   side_code     <- m[7]
   wing_code     <- m[8]
-  series_code   <- m[9]
+  photo_rep     <- as.integer(m[9])
   
   urbanity_full <- ifelse(urbanity_code == "R", "Rural", "Urban")
   
@@ -77,7 +81,8 @@ parse_metadata <- function(fname) {
     species        = species_full,
     side           = side_full,
     wing           = wing_full,
-    series         = as.integer(series_code)   # digitization replicate
+    photo_rep      = photo_rep,   # 1 = primary photo, 2 = imaging replicate
+    digit_rep      = digit_rep    # 1 = main digitization, 2 = _rep digitization
   )
 }
 
@@ -140,7 +145,8 @@ read_shapes_to_array <- function(folder) {
     species       = character(n),
     side          = character(n),
     wing          = character(n),
-    series        = integer(n),
+    photo_rep     = integer(n),
+    digit_rep     = integer(n),
     
     stringsAsFactors = FALSE
   )
@@ -166,12 +172,14 @@ read_shapes_to_array <- function(folder) {
     metadata$species[i]       <- md$species
     metadata$side[i]          <- md$side
     metadata$wing[i]          <- md$wing
-    metadata$series[i]        <- md$series
+    metadata$photo_rep[i]     <- md$photo_rep
+    metadata$digit_rep[i]     <- md$digit_rep
   }
   
-  key <- paste(metadata$specimen_uid, metadata$side, metadata$series, sep = "__")
+  key <- paste(metadata$specimen_uid, metadata$side, metadata$wing,
+               metadata$photo_rep, metadata$digit_rep, sep = "__")
   if (any(duplicated(key))) {
-    stop("Duplicate specimen_uid × side × series in: ", folder)
+    stop("Duplicate specimen_uid × side × wing × photo_rep × digit_rep in: ", folder)
   }
   
   list(coords = coords, metadata = metadata)

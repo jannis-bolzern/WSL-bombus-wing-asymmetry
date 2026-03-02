@@ -2,7 +2,7 @@
 #
 # Purpose:
 #   - Extract fluctuating asymmetry (FA) from forewing shape
-#   - Single digitization per wing (series = 1)
+#   - Single digitization per wing (photo_rep = 1, digit_rep = 1)
 #   - Replicates used only for QC, not FA modeling
 #   - Run separately for Bombus lapidarius and B. pascuorum
 #
@@ -71,12 +71,17 @@ for (sp in species) {
   # Normalize side labels
   meta_all$side <- ifelse(meta_all$side %in% c("L", "Left"), "Left", "Right")
   
-  # Filter to primary digitization only
-  keep <- meta_all$series == 1
+  # Filter to primary photo + primary digitization only
+  if (!all(c("photo_rep", "digit_rep") %in% names(meta_all))) {
+    stop("Expected columns photo_rep and digit_rep in metadata for species: ", sp,
+         "\nDid you update Script 04 and rebuild fw_metadata_<species>.csv?")
+  }
+  
+  keep <- meta_all$photo_rep == 1 & meta_all$digit_rep == 1
   
   cat(
     "  Dropping", sum(!keep),
-    "replicate digitizations\n"
+    "replicate observations (photo_rep != 1 and/or digit_rep != 1)\n"
   )
   
   meta_all   <- meta_all[keep, , drop = FALSE]
