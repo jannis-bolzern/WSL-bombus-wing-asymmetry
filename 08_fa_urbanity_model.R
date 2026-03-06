@@ -29,7 +29,7 @@ library(ggplot2)
 
 # 8.2 - Settings ----------------------------------------------------------
 
-fa_dir  <- file.path("results", "05_fa_analysis")
+fa_dir  <- file.path("results", "05_extract_fa")
 out_dir <- file.path("results", "08_fa_models")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 

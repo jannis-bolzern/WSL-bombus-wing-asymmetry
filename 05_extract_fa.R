@@ -7,7 +7,7 @@
 #   - Run separately for Bombus lapidarius and B. pascuorum
 #
 # Outputs (per species):
-#   results/05_fa_analysis/
+#   results/05_extract_fa/
 #     - fa_table_<SPECIES>.csv
 #     - symmetry_object_<SPECIES>.RDS
 

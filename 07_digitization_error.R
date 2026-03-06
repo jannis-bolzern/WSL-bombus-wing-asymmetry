@@ -17,7 +17,7 @@ library(geomorph)
 
 # 7.2 Settings ------------------------------------------------------------
 
-species <- "lapidarius" # Set to either "lapidarius" or "pascuorum"
+species <- "pascuorum" # Set to either "lapidarius" or "pascuorum"
 
 data_dir <- "data"
 coords_file <- file.path(data_dir, paste0("fw_coords_", species, ".RDS"))
@@ -40,32 +40,40 @@ if (nrow(meta_all) != dim(coords_all)[3]) {
 }
 
 meta_all$side   <- ifelse(meta_all$side %in% c("L","Left"), "Left", "Right")
-meta_all$series <- as.integer(meta_all$series)
+meta_all$photo_rep <- as.integer(meta_all$photo_rep)
+meta_all$digit_rep <- as.integer(meta_all$digit_rep)
 
 # Wing identity = same physical wing
 meta_all$wing_id <- paste(meta_all$specimen_uid, meta_all$side, sep = "__")
 
 # 7.4 Keep only replicated wings -----------------------------------------
 
-tab <- with(meta_all, table(wing_id, series))
+# Keep only digitization replicates on the PRIMARY photo (photo_rep == 1)
+meta_sub <- meta_all[meta_all$photo_rep == 1 & meta_all$digit_rep %in% c(1, 2), , drop = FALSE]
+
+tab <- with(meta_sub, table(wing_id, digit_rep))
 
 if (!all(c("1","2") %in% colnames(tab))) {
-  stop("No replicate digitizations found (both series 1 and 2 required).")
+  stop("No digitization replicates found (need digit_rep 1 and 2 with photo_rep == 1).")
 }
 
 wing_ids_rep <- rownames(tab)[tab[, "1"] == 1 & tab[, "2"] == 1]
 
-sel <- meta_all$wing_id %in% wing_ids_rep & meta_all$series %in% c(1, 2)
-meta   <- meta_all[sel, , drop = FALSE]
-coords <- coords_all[,,sel, drop = FALSE]
+sel <- meta_sub$wing_id %in% wing_ids_rep
+meta   <- meta_sub[sel, , drop = FALSE]
+
+# subset coords to the same rows as meta (meta is a filtered copy, so match by 'file')
+idx <- match(meta$file, meta_all$file)
+if (any(is.na(idx))) stop("Internal error: could not match filtered metadata back to original rows.")
+coords <- coords_all[,,idx, drop = FALSE]
 
 # Sanity check
-counts <- table(meta$wing_id, meta$series)
+counts <- table(meta$wing_id, meta$digit_rep)
 bad <- rownames(counts)[!(counts[, "1"] == 1 & counts[, "2"] == 1)]
 
 if (length(bad) > 0) {
   stop(
-    "Some wings do not have exactly one series-1 and one series-2 digitization.\n",
+    "Some wings do not have exactly one digit_rep=1 and one digit_rep=2 (photo_rep==1).\n",
     "Examples:\n",
     paste(head(bad, 10), collapse = ", ")
   )
@@ -109,8 +117,8 @@ for (i in seq_along(wing_ids)) {
   
   rows <- which(meta$wing_id == wing_ids[i])
   
-  i1 <- rows[meta$series[rows] == 1]
-  i2 <- rows[meta$series[rows] == 2]
+  i1 <- rows[meta$digit_rep[rows] == 1]
+  i2 <- rows[meta$digit_rep[rows] == 2]
   
   A <- coords[,,i1]
   B <- coords[,,i2]
