@@ -1,0 +1,22 @@
+Species: lapidarius
+Test: Imaging ME (digit_rep==1, photo_rep 1 vs 2) 
+
+
+Analysis of Variance, using Residual Randomization
+Permutation procedure: Randomization of null model residuals 
+Number of permutations: 1000 
+Estimation method: Ordinary Least Squares 
+Sums of Squares and Cross-products: Type I 
+Effect sizes (Z) based on F distributions
+
+          Df       SS         MS     Rsq        F       Z Pr(>F)    
+ind       23 0.037156 0.00161547 0.86939 168.4286 18.8199  0.001 ***
+sideF      1 0.000571 0.00057053 0.01335  59.4828 11.2939  0.001 ***
+photorep   1 0.000037 0.00003705 0.00087   3.8633  3.7879  0.001 ***
+ind:sideF 23 0.004524 0.00019668 0.10585  20.5057 22.6803  0.001 ***
+Residuals 47 0.000451 0.00000959 0.01055                            
+Total     95 0.042738                                               
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Call: procD.lm(f1 = gpa$coords ~ ind * sideF + photorep, iter = 999,      data = meta_img)

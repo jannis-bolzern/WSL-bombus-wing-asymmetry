@@ -1,6 +1,6 @@
 Bombus pascuorum 
 
-Response: log(FA) 
+Response: Unsigned FA (Procrustes units) 
 
 Linear mixed model fit by REML. t-tests use Satterthwaite's method ['lmerModLmerTest']
 Formula: response ~ urbanity + (1 | site)
@@ -10,18 +10,18 @@ REML criterion at convergence: -1991.1
 
 Scaled residuals: 
     Min      1Q  Median      3Q     Max 
--1.8169 -0.7233 -0.2352  0.4026  3.3638 
+-1.8168 -0.7233 -0.2352  0.4026  3.3640 
 
 Random effects:
  Groups   Name        Variance  Std.Dev. 
- site     (Intercept) 8.941e-11 9.456e-06
+ site     (Intercept) 8.945e-11 9.458e-06
  Residual             2.520e-09 5.020e-05
 Number of obs: 120, groups:  site, 6
 
 Fixed effects:
-               Estimate Std. Error        df t value Pr(>|t|)    
-(Intercept)   1.150e-04  8.473e-06 4.000e+00  13.573 0.000171 ***
-urbanityUrban 7.623e-06  1.198e-05 4.000e+00   0.636 0.559262    
+               Estimate Std. Error        df  t value Pr(>|t|)    
+(Intercept)   1.000e+00  8.475e-06 4.000e+00 1.18e+05   <2e-16 ***
+urbanityUrban 7.624e-06  1.198e-05 4.000e+00 6.36e-01    0.559    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 

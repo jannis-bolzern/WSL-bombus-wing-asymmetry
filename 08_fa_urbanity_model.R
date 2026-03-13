@@ -5,16 +5,17 @@
 #     urban and rural environments
 #
 # Model:
-#   FA ~ urbanity + (1 | site)
+#   response ~ urbanity + (1 | site)
 #
 # Inputs:
-#   results/05_fa_analysis/fa_table_<species>.csv
+#   results/05_extract_fa/fa_table_<species>.csv
 #
 # Outputs:
 #   results/08_fa_models/
 #     - model_summary_<species>.txt
 #     - model_coefficients_<species>.csv
-#     - fa_by_urbanity_<species>.png
+#     - model_effect_<species>.csv              (NEW: effect + CI)
+#     - fa_by_urbanity_<species>.png            (improved plot)
 #     - diagnostics_<species>.png
 
 # 8.1 - Libraries ---------------------------------------------------------
@@ -33,10 +34,7 @@ fa_dir  <- file.path("results", "05_extract_fa")
 out_dir <- file.path("results", "08_fa_models")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
-# Optional: log-transform FA (recommended = TRUE)
-log_FA <- TRUE
-
-# 8.3 - Detect species automatically -------------------------------------
+# 8.3 - Detect species automatically --------------------------------------
 
 fa_files <- list.files(
   fa_dir,
@@ -66,14 +64,14 @@ for (sp in species) {
   fa$urbanity <- factor(fa$urbanity, levels = c("Rural", "Urban"))
   fa$site     <- factor(fa$site)
   
-  cat("  Sample size by environment:\n")
+  cat("  Sample size by environment (individuals):\n")
   print(table(fa$urbanity))
   
-  # Response variable
-  fa$response <- if (log_FA) log(fa$FA_unsigned) else fa$FA_unsigned
-  response_label <- if (log_FA) "log(FA)" else "FA"
+  # ---- Response variable ----
+  fa$response <- fa$FA_unsigned
+  response_label <- "Unsigned FA (Procrustes units)"
   
-  # Model
+  # ---- Model ----
   m <- lmer(
     response ~ urbanity + (1 | site),
     data = fa,
@@ -89,7 +87,7 @@ for (sp in species) {
   print(sm)
   sink()
   
-  # Coefficients
+  # Coefficients table
   coef_df <- as.data.frame(sm$coefficients)
   coef_df$term <- rownames(coef_df)
   rownames(coef_df) <- NULL
@@ -100,40 +98,91 @@ for (sp in species) {
     row.names = FALSE
   )
   
-  # Plot FA by urbanity
+  # Effect size + CI (Urban - Rural)
+  beta <- fixef(m)["urbanityUrban"]
+  ci <- suppressMessages(confint(m, parm = "urbanityUrban", method = "Wald"))
+  pval <- coef(summary(m))["urbanityUrban", "Pr(>|t|)"]
+  
+  eff <- data.frame(
+    species = sp,
+    response = response_label,
+    beta_urban_minus_rural = as.numeric(beta),
+    ci_low = as.numeric(ci[1]),
+    ci_high = as.numeric(ci[2]),
+    p_value = as.numeric(pval),
+    stringsAsFactors = FALSE
+  )
+  
+  write.csv(
+    eff,
+    file.path(out_dir, paste0("model_effect_", sp, ".csv")),
+    row.names = FALSE
+  )
+  
+  # --- Boxplot ---
+  
+  n_tab <- table(fa$urbanity)
+  x_labs <- c(
+    Rural = paste0("Rural\n(n=", n_tab["Rural"], ")"),
+    Urban = paste0("Urban\n(n=", n_tab["Urban"], ")")
+  )
+  
+  ann <- sprintf("p = %.3g", as.numeric(pval))
+  
+  y_max <- max(fa$response, na.rm = TRUE)
+  y_rng <- diff(range(fa$response, na.rm = TRUE))
+  y_br  <- y_max + 0.06 * y_rng
+  y_txt <- y_max + 0.10 * y_rng
+  
   p <- ggplot(fa, aes(x = urbanity, y = response)) +
-    geom_boxplot(outlier.shape = NA, width = 0.6) +
-    geom_jitter(width = 0.15, alpha = 0.6, size = 1.8) +
+    geom_boxplot(
+      width = 0.55,
+      linewidth = 0.7,
+      outlier.size = 1.3,
+      outlier.alpha = 0.45
+    ) +
+    # bracket (no warnings)
+    annotate("segment", x = 1, xend = 2, y = y_br, yend = y_br, linewidth = 0.6) +
+    annotate("segment", x = 1, xend = 1, y = y_br, yend = y_br - 0.02*y_rng, linewidth = 0.6) +
+    annotate("segment", x = 2, xend = 2, y = y_br, yend = y_br - 0.02*y_rng, linewidth = 0.6) +
+    # effect text
+    annotate("text", x = 1.5, y = y_txt, label = ann, size = 3.6, vjust = 0) +
+    scale_x_discrete(labels = x_labs) +
     labs(
-      title = paste("Fluctuating asymmetry – Bombus", sp),
-      x = "Environment",
+      title = paste("FA vs urbanity – Bombus", sp),
+      x = NULL,
       y = response_label
     ) +
-    theme_classic(base_size = 14)
+    coord_cartesian(ylim = c(min(fa$response, na.rm = TRUE), y_max + 0.18*y_rng)) +
+    theme_classic(base_size = 13) +
+    theme(
+      plot.title = element_text(face = "bold"),
+      axis.text.x = element_text(lineheight = 0.95)
+    )
   
   ggsave(
     filename = file.path(out_dir, paste0("fa_by_urbanity_", sp, ".png")),
     plot = p,
-    width = 6,
-    height = 4,
+    width = 5.8,
+    height = 4.3,
     dpi = 300
   )
   
-  # Diagnostics
+  # ---- Diagnostics ----
   png(
     file.path(out_dir, paste0("diagnostics_", sp, ".png")),
     width = 1600, height = 1600, res = 300
   )
-  par(mfrow = c(1, 2))
+  par(mfrow = c(2, 2))
   plot(fitted(m), resid(m),
        xlab = "Fitted values", ylab = "Residuals",
        main = "Residuals vs fitted")
   abline(h = 0, col = "red")
-  qqnorm(resid(m))
-  qqline(resid(m), col = "red")
+  qqnorm(resid(m)); qqline(resid(m), col = "red")
+  hist(resid(m), main = "Residual histogram", xlab = "Residuals")
   dev.off()
   
-  cat("  Model, plot, and diagnostics saved for Bombus", sp, "\n")
+  cat("  Model, effect table, plot, and diagnostics saved for Bombus", sp, "\n")
 }
 
 cat("\nOutputs written to:\n  ", out_dir, "\n", sep = "")

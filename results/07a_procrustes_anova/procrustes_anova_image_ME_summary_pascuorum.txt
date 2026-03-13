@@ -1,0 +1,22 @@
+Species: pascuorum
+Test: Imaging ME (digit_rep==1, photo_rep 1 vs 2) 
+
+
+Analysis of Variance, using Residual Randomization
+Permutation procedure: Randomization of null model residuals 
+Number of permutations: 1000 
+Estimation method: Ordinary Least Squares 
+Sums of Squares and Cross-products: Type I 
+Effect sizes (Z) based on F distributions
+
+          Df       SS         MS     Rsq        F       Z Pr(>F)    
+ind       23 0.037873 0.00164665 0.87407 196.5293 23.5746  0.001 ***
+sideF      1 0.000356 0.00035637 0.00822  42.5327 10.8303  0.001 ***
+photorep   1 0.000021 0.00002078 0.00048   2.4802  2.5463  0.004 ** 
+ind:sideF 23 0.004686 0.00020373 0.10814  24.3152 27.8892  0.001 ***
+Residuals 47 0.000394 0.00000838 0.00909                            
+Total     95 0.043330                                               
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Call: procD.lm(f1 = gpa$coords ~ ind * sideF + photorep, iter = 999,      data = meta_img)

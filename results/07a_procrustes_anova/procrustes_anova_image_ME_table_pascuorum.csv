@@ -1,0 +1,6 @@
+"Species","Test","N_ind","N_wings","N_obs","Source","Df","SS","MS","R2","R2_pct","F","Z","p","sig"
+"pascuorum","Imaging ME",24,48,96,"Individual",23,0.037873,0.00164665,0.874065,87.4065,196.529,23.575,0.001,"**"
+"pascuorum","Imaging ME",24,48,96,"Side (DA)",1,0.000356368,0.000356368,0.008225,0.8225,42.533,10.83,0.001,"**"
+"pascuorum","Imaging ME",24,48,96,"Individual × Side (FA)",23,0.00468578,0.000203729,0.108142,10.8142,24.315,27.889,0.001,"**"
+"pascuorum","Imaging ME",24,48,96,"Photo replicate",1,2.07806e-05,2.07806e-05,0.00048,0.048,2.48,2.546,0.004,"**"
+"pascuorum","Imaging ME",24,48,96,"Residuals",47,0.000393797,8.37867e-06,0.009088,0.9088,NA,NA,NA,""

@@ -1,0 +1,6 @@
+"Species","Test","N_ind","N_wings","N_obs","Source","Df","SS","MS","R2","R2_pct","F","Z","p","sig"
+"pascuorum","Digitization ME",24,48,96,"Individual",23,0.0382926,0.00166489,0.874629,87.4629,242.619,22.14,0.001,"**"
+"pascuorum","Digitization ME",24,48,96,"Side (DA)",1,0.000353583,0.000353583,0.008076,0.8076,51.527,12.295,0.001,"**"
+"pascuorum","Digitization ME",24,48,96,"Individual × Side (FA)",23,0.00480556,0.000208937,0.109762,10.9762,30.448,26.689,0.001,"**"
+"pascuorum","Digitization ME",24,48,96,"Digitization replicate",1,7.2895e-06,7.2895e-06,0.000166,0.0166,1.062,0.33,0.376,""
+"pascuorum","Digitization ME",24,48,96,"Residuals",47,0.000322522,6.86216e-06,0.007367,0.7367,NA,NA,NA,""
